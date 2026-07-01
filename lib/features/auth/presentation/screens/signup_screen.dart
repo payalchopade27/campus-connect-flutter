@@ -1,0 +1,144 @@
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+class SignupScreen extends StatelessWidget {
+  const SignupScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF4F46E5),
+              Color(0xFF7C3AED),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.92),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.person_add_rounded,
+                      size: 48,
+                      color: Color(0xFF4F46E5),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    const Text(
+                      'Create Account',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E1B4B),
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    const Text(
+                      'Start building your campus network',
+                      style: TextStyle(color: Colors.black54),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    TextField(
+                      decoration: _inputDecoration('Full Name'),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    TextField(
+                      decoration: _inputDecoration('Email'),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    TextField(
+                      obscureText: true,
+                      decoration: _inputDecoration('Password'),
+                    ),
+
+                    const SizedBox(height: 22),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F46E5),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    TextButton(
+                      onPressed: () {
+                        context.pop();
+                      },
+                      child: const Text(
+                        'Already have an account? Login',
+                        style: TextStyle(
+                          color: Color(0xFF7C3AED),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(
+          color: Color(0xFF4F46E5),
+          width: 1.5,
+        ),
+      ),
+    );
+  }
+}
