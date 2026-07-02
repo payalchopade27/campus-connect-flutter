@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
-
-import 'package:go_router/go_router.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,17 +10,24 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  @override
+
   @override
   void initState() {
     super.initState();
 
-    Timer(
-      const Duration(seconds: 2),
-          () {
-        context.go('/login');
-      },
-    );
+    Timer(const Duration(seconds: 2), _checkSession);
+  }
+
+  void _checkSession() {
+    final session = Supabase.instance.client.auth.currentSession;
+
+    if (session != null) {
+      // ✅ User already logged in → Home
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      // ❌ Not logged in → Login
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   @override
@@ -39,11 +45,9 @@ class _SplashScreenState extends State<SplashScreen> {
             end: Alignment.bottomRight,
           ),
         ),
-
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-
             Icon(
               Icons.groups_rounded,
               size: 90,

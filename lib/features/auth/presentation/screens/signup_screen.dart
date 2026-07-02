@@ -1,9 +1,27 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SignupScreen extends StatelessWidget {
+class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
+
+  @override
+  State<SignupScreen> createState() => _SignupScreenState();
+}
+
+class _SignupScreenState extends State<SignupScreen> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    nameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +58,7 @@ class SignupScreen extends StatelessWidget {
                       size: 48,
                       color: Color(0xFF4F46E5),
                     ),
-
                     const SizedBox(height: 12),
-
                     const Text(
                       'Create Account',
                       style: TextStyle(
@@ -51,39 +67,36 @@ class SignupScreen extends StatelessWidget {
                         color: Color(0xFF1E1B4B),
                       ),
                     ),
-
                     const SizedBox(height: 6),
-
                     const Text(
                       'Start building your campus network',
                       style: TextStyle(color: Colors.black54),
                     ),
-
                     const SizedBox(height: 24),
 
                     TextField(
+                      controller: nameController,
                       decoration: _inputDecoration('Full Name'),
                     ),
-
                     const SizedBox(height: 14),
 
                     TextField(
+                      controller: emailController,
                       decoration: _inputDecoration('Email'),
                     ),
-
                     const SizedBox(height: 14),
 
                     TextField(
+                      controller: passwordController,
                       obscureText: true,
                       decoration: _inputDecoration('Password'),
                     ),
-
                     const SizedBox(height: 22),
 
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: _signup,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF4F46E5),
                           foregroundColor: Colors.white,
@@ -97,7 +110,6 @@ class SignupScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
@@ -106,14 +118,10 @@ class SignupScreen extends StatelessWidget {
                     const SizedBox(height: 12),
 
                     TextButton(
-                      onPressed: () {
-                        context.pop();
-                      },
+                      onPressed: () => context.pop(),
                       child: const Text(
                         'Already have an account? Login',
-                        style: TextStyle(
-                          color: Color(0xFF7C3AED),
-                        ),
+                        style: TextStyle(color: Color(0xFF7C3AED)),
                       ),
                     ),
                   ],
@@ -124,6 +132,31 @@ class SignupScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _signup() async {
+    final supabase = Supabase.instance.client;
+
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    try {
+      final response = await supabase.auth.signUp(
+        email: email,
+        password: password,
+      );
+
+      if (response.user != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Signup successful')),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
   }
 
   static InputDecoration _inputDecoration(String label) {
