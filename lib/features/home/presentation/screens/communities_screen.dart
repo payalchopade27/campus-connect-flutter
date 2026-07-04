@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/services/community_service.dart';
-import '../../../../core/models/community_model.dart';
-import 'community_screen.dart';
 
 class CommunitiesScreen extends StatefulWidget {
   const CommunitiesScreen({super.key});
@@ -11,227 +8,261 @@ class CommunitiesScreen extends StatefulWidget {
   State<CommunitiesScreen> createState() => _CommunitiesScreenState();
 }
 
-class _CommunitiesScreenState extends State<CommunitiesScreen> {
-  final CommunityService _service = CommunityService();
+class _CommunitiesScreenState extends State<CommunitiesScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final supabase = Supabase.instance.client;
 
-  late Future<List<Community>> created;
-  late Future<List<Community>> joined;
-  late Future<List<Community>> discover;
+  late Future<List<Map<String, dynamic>>> createdFuture;
+  late Future<List<Map<String, dynamic>>> joinedFuture;
+  late Future<List<Map<String, dynamic>>> discoverFuture;
 
   @override
   void initState() {
     super.initState();
-    _reload();
+    _tabController = TabController(length: 3, vsync: this);
+    _loadAll();
   }
 
-  void _reload() {
-    setState(() {
-      created = _service.getCreatedCommunities();
-      joined = _service.getJoinedCommunities();
-      discover = _service.getDiscoverCommunities();
-    });
+  void _loadAll() {
+    createdFuture = _getCreated();
+    joinedFuture = _getJoined();
+    discoverFuture = _getDiscover();
   }
+
+  /// ------------------ DATA ------------------
+
+  Future<List<Map<String, dynamic>>> _getCreated() async {
+    final uid = supabase.auth.currentUser!.id;
+    final data = await supabase
+        .from('communities')
+        .select()
+        .eq('created_by', uid)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<List<Map<String, dynamic>>> _getJoined() async {
+    final uid = supabase.auth.currentUser!.id;
+
+    final data = await supabase
+        .from('community_members')
+        .select('communities(*)')
+        .eq('user_id', uid);
+
+    return data
+        .map<Map<String, dynamic>>((e) => e['communities'])
+        .where((e) => e != null)
+        .toList();
+  }
+
+  /// 🔴 FIXED NULL ERROR HERE
+  Future<List<Map<String, dynamic>>> _getDiscover() async {
+    final uid = supabase.auth.currentUser!.id;
+
+    final joined = await supabase
+        .from('community_members')
+        .select('community_id')
+        .eq('user_id', uid);
+
+    final joinedIds =
+    joined.map((e) => e['community_id']).toList();
+
+    final query = supabase.from('communities').select();
+
+    if (joinedIds.isNotEmpty) {
+      query.not('id', 'in', '(${joinedIds.join(",")})');
+    }
+
+    final data = await query.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<void> _joinCommunity(String id) async {
+    await supabase.from('community_members').insert({
+      'community_id': id,
+      'user_id': supabase.auth.currentUser!.id,
+    });
+    setState(_loadAll);
+  }
+
+  /// ------------------ UI ------------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F3F7),
+      backgroundColor: const Color(0xFFF4F6FA),
       appBar: AppBar(
-        title: const Text("Communities"),
-        centerTitle: true,
-        elevation: 0,
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF4F46E5),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("Create", style: TextStyle(color: Colors.white)),
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CreateCommunityScreen()),
-          );
-          _reload();
-        },
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => _reload(),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-          children: [
-            _section("Created by You", created, false),
-            const SizedBox(height: 32),
-            _section("Joined Communities", joined, false),
-            const SizedBox(height: 32),
-            _section("Discover Communities", discover, true),
+        elevation: 0,
+        title: const Text(
+          "Communities",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: const Color(0xFF4F46E5),
+          labelColor: const Color(0xFF4F46E5),
+          unselectedLabelColor: Colors.grey,
+          tabs: const [
+            Tab(text: "Created"),
+            Tab(text: "Joined"),
+            Tab(text: "Discover"),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _section(String title, Future<List<Community>> future, bool showJoin) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 14),
-        FutureBuilder<List<Community>>(
-          future: future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
-            }
-            if (snapshot.hasError) {
-              return Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.red));
-            }
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Text("Nothing here yet", style: TextStyle(color: Colors.grey));
-            }
-            return Column(
-              children: snapshot.data!.map((c) => _communityCard(c, showJoin)).toList(),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _communityCard(Community c, bool showJoin) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF4F46E5),
+        onPressed: () {},
+        icon: const Icon(Icons.add),
+        label: const Text("Create"),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _communityList(createdFuture, showJoin: false),
+          _communityList(joinedFuture, showJoin: false),
+          _communityList(discoverFuture, showJoin: true),
         ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => CommunityScreen(
-                communityId: c.id,
-                communityName: c.name,
-                description: c.description,
-              ),
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
+    );
+  }
+
+  Widget _communityList(
+      Future<List<Map<String, dynamic>>> future, {
+        required bool showJoin,
+      }) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return _emptyState(showJoin);
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: snapshot.data!.length,
+          itemBuilder: (context, index) {
+            return _communityCard(snapshot.data![index], showJoin);
+          },
+        );
+      },
+    );
+  }
+
+  /// 🔥 COMPLETELY NEW CARD DESIGN
+  Widget _communityCard(Map<String, dynamic> c, bool showJoin) {
+    final name = c['name'] ?? '';
+    final desc = c['description'] ?? 'No description';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Container(
-                width: 52, height: 52,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)]),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Text(c.name[0].toUpperCase(),
-                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white,
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: Color(0xFF4F46E5),
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(c.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 6),
-                    Text(c.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black54)),
-                  ],
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            desc,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Colors.white70 != null
+                ? const TextStyle(color: Colors.white70)
+                : null,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
               if (showJoin)
                 ElevatedButton(
+                  onPressed: () => _joinCommunity(c['id']),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF4F46E5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  onPressed: () async {
-                    await _service.joinCommunity(c.id);
-                    setState(_reload); // refresh lists
-                  },
                   child: const Text("Join"),
                 )
               else
-                const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+                const Icon(Icons.arrow_forward_ios,
+                    color: Colors.white, size: 16),
             ],
-          ),
-        ),
+          )
+        ],
       ),
     );
   }
-}
 
-/// ➕ CREATE COMMUNITY SCREEN (Consolidated)
-class CreateCommunityScreen extends StatefulWidget {
-  const CreateCommunityScreen({super.key});
-
-  @override
-  State<CreateCommunityScreen> createState() => _CreateCommunityScreenState();
-}
-
-class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
-  bool _isLoading = false;
-
-  Future<void> _handleCreate() async {
-    final name = _nameController.text.trim();
-    final desc = _descController.text.trim();
-
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter a community name")));
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      final supabase = Supabase.instance.client;
-      await supabase.from('communities').insert({
-        'name': name,
-        'description': desc,
-        'created_by': supabase.auth.currentUser!.id,
-      });
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Create Community")),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
+  Widget _emptyState(bool discover) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Community Name", border: OutlineInputBorder())),
-            const SizedBox(height: 20),
-            TextField(controller: _descController, maxLines: 3, decoration: const InputDecoration(labelText: "Description", border: OutlineInputBorder())),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity, height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5)),
-                onPressed: _isLoading ? null : _handleCreate,
-                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Create Community", style: TextStyle(color: Colors.white)),
+            Icon(
+              discover ? Icons.explore : Icons.groups,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              discover
+                  ? "No communities to discover"
+                  : "Nothing here yet",
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
               ),
             ),
           ],

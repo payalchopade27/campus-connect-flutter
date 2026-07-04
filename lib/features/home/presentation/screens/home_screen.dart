@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:campus_connect/features/home/presentation/screens/communities_screen.dart';
 import 'package:campus_connect/features/home/presentation/screens/profile_screen.dart';
 
@@ -8,11 +7,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F7),
-
       appBar: AppBar(
         elevation: 0,
         title: const Text(
@@ -24,60 +20,27 @@ class HomeScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _welcomeCard(user?.email ?? "Student"),
-
+          _welcomeCard(),
           const SizedBox(height: 24),
 
           _sectionTitle("Quick Actions"),
+          _quickActions(context),
 
-          Row(
-            children: [
-              _actionButton(
-                icon: Icons.groups,
-                label: "Communities",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CommunitiesScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(width: 16),
-              _actionButton(
-                icon: Icons.person_outline,
-                label: "My Profile",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ProfileScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+          const SizedBox(height: 28),
+          _sectionTitle("Trending Communities"),
+          _trendingCommunities(),
 
-          const SizedBox(height: 32),
-
-          _sectionTitle("Team Building"),
-
-          _infoCard(
-            icon: Icons.groups_outlined,
-            title: "Looking for Teammates?",
-            subtitle:
-            "Post your idea, tech stack & required roles to find students",
-          ),
+          const SizedBox(height: 28),
+          _sectionTitle("Looking for Team"),
+          _teamPreview(),
         ],
       ),
     );
   }
 
-  // ================= UI COMPONENTS =================
+  // ================= UI SECTIONS =================
 
-  Widget _welcomeCard(String email) {
+  Widget _welcomeCard() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -86,26 +49,76 @@ class HomeScreen extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(24),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Welcome 👋",
-            style: TextStyle(color: Colors.white70),
-          ),
-          const SizedBox(height: 6),
           Text(
-            email,
-            style: const TextStyle(
+            "Build your next project 🚀",
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
             ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            "Find teammates, join communities, and collaborate with students from your campus.",
+            style: TextStyle(color: Colors.white70),
           ),
         ],
       ),
     );
   }
+
+  Widget _quickActions(BuildContext context) {
+    return Row(
+      children: [
+        _actionTile(
+          icon: Icons.groups_outlined,
+          title: "Communities",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CommunitiesScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 16),
+        _actionTile(
+          icon: Icons.person_outline,
+          title: "Profile",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ProfileScreen(),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _trendingCommunities() {
+    return _placeholderCard(
+      icon: Icons.local_fire_department_outlined,
+      title: "Explore active communities",
+      subtitle: "Join tech, startup & project-based groups",
+    );
+  }
+
+  Widget _teamPreview() {
+    return _placeholderCard(
+      icon: Icons.groups,
+      title: "Students looking for teammates",
+      subtitle: "Open requests will appear here",
+    );
+  }
+
+  // ================= REUSABLE =================
 
   Widget _sectionTitle(String title) {
     return Padding(
@@ -120,16 +133,16 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _actionButton({
+  Widget _actionTile({
     required IconData icon,
-    required String label,
+    required String title,
     required VoidCallback onTap,
   }) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -144,12 +157,10 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             children: [
               Icon(icon, size: 36, color: const Color(0xFF4F46E5)),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
-                label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -158,7 +169,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _infoCard({
+  Widget _placeholderCard({
     required IconData icon,
     required String title,
     required String subtitle,
@@ -178,7 +189,7 @@ class HomeScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 40, color: const Color(0xFF4F46E5)),
+          Icon(icon, size: 36, color: const Color(0xFF4F46E5)),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -187,11 +198,11 @@ class HomeScreen extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: const TextStyle(color: Colors.black54),
