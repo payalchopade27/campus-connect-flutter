@@ -1,4 +1,3 @@
-import 'package:campus_connect/features/splash/presentation/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,27 +13,28 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
-    _checkSession();
-  }
 
-  Future<void> _checkSession() async {
-    final session = Supabase.instance.client.auth.currentSession;
+    // Run once after widget is mounted
+    Future.microtask(() {
+      final session = Supabase.instance.client.auth.currentSession;
 
-    // Keep splash visible
-    await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
 
-    if (!mounted) return;
-
-    if (session != null) {
-      context.go('/home');
-    } else {
-      context.go('/login');
-    }
+      if (session != null) {
+        context.go('/main'); // ✅ GO TO MAIN LAYOUT
+      } else {
+        context.go('/login'); // ✅ GO TO LOGIN
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // 👇 THIS IS THE KEY LINE
-    return const SplashScreen();
+    // Just a loading screen
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
   }
 }

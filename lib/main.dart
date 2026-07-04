@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:campus_connect/features/splash/presentation/screens/splash_screen.dart';
 import 'package:campus_connect/features/auth/presentation/screens/login_screen.dart';
 import 'package:campus_connect/features/auth/presentation/screens/signup_screen.dart';
-import 'package:campus_connect/features/home/presentation/screens/home_screen.dart';
+import 'package:campus_connect/features/home/presentation/screens/main_layout.dart';
 import 'package:campus_connect/core/theme/app_theme.dart';
 
 final GlobalKey<NavigatorState> navigatorKey =
@@ -44,7 +44,7 @@ class _MyAppState extends State<MyApp> {
 
         if (event == AuthChangeEvent.signedIn && session != null) {
           navigatorKey.currentState
-              ?.pushNamedAndRemoveUntil('/home', (route) => false);
+              ?.pushNamedAndRemoveUntil('/main', (route) => false);
         }
 
         if (event == AuthChangeEvent.signedOut) {
@@ -67,7 +67,7 @@ class _MyAppState extends State<MyApp> {
         '/splash': (_) => const SplashScreen(),
         '/login': (_) => const LoginScreen(),
         '/signup': (_) => const SignupScreen(),
-        '/home': (_) => const HomeScreen(),
+        '/main': (_) => const MainLayout(),
       },
     );
   }

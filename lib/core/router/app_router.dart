@@ -3,6 +3,8 @@ import 'package:campus_connect/features/auth/presentation/screens/signup_screen.
 import 'package:campus_connect/features/home/presentation/screens/home_screen.dart';
 import 'package:campus_connect/features/auth/presentation/screens/auth_gate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:campus_connect/features/home/presentation/screens/main_layout.dart';
+
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -20,8 +22,8 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const SignupScreen(),
     ),
     GoRoute(
-      path: '/home',
-      builder: (context, state) => const HomeScreen(),
+      path: '/main',
+      builder: (context, state) => const MainLayout(),
     ),
   ],
 );

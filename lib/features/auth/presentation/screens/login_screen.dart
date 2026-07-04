@@ -171,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.user != null && mounted) {
-        context.go('/home');
+        context.go('/main');
       }
     } on AuthException catch (e) {
       // 👈 REAL Supabase error message

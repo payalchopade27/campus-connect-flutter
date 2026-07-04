@@ -1,140 +1,203 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:campus_connect/features/home/presentation/screens/communities_screen.dart';
+import 'package:campus_connect/features/home/presentation/screens/profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-
-    // 1️⃣ Get current logged-in user
     final user = Supabase.instance.client.auth.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF4F46E5),
-        title: const Text(
-          "CampusConnect",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () async {
-              await Supabase.instance.client.auth.signOut();
+      backgroundColor: const Color(0xFFF2F3F7),
 
-              // Navigate back to login after logout
-              Navigator.pushReplacementNamed(context, '/login');
-            },
+      appBar: AppBar(
+        elevation: 0,
+        title: const Text(
+          "Campus Connect",
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _welcomeCard(user?.email ?? "Student"),
+
+          const SizedBox(height: 24),
+
+          _sectionTitle("Quick Actions"),
+
+          Row(
+            children: [
+              _actionButton(
+                icon: Icons.groups,
+                label: "Communities",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CommunitiesScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 16),
+              _actionButton(
+                icon: Icons.person_outline,
+                label: "My Profile",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProfileScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+
+          _sectionTitle("Team Building"),
+
+          _infoCard(
+            icon: Icons.groups_outlined,
+            title: "Looking for Teammates?",
+            subtitle:
+            "Post your idea, tech stack & required roles to find students",
           ),
         ],
       ),
+    );
+  }
 
-      body: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFFF5F3FF),
-              Color(0xFFEDE9FE),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+  // ================= UI COMPONENTS =================
+
+  Widget _welcomeCard(String email) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Welcome 👋",
+            style: TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            email,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            const SizedBox(height: 30),
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
 
-            const Text(
-              "Welcome 👋",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E1B4B),
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
               ),
-            ),
-
-            const SizedBox(height: 10),
-
-            Text(
-              user?.email ?? "Unknown user",
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 36, color: const Color(0xFF4F46E5)),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-
-            const SizedBox(height: 30),
-
-            _infoCard(
-              title: "Projects",
-              subtitle: "Create & collaborate on ideas",
-              icon: Icons.lightbulb_outline,
-            ),
-
-            _infoCard(
-              title: "Communities",
-              subtitle: "Connect with campus peers",
-              icon: Icons.groups_outlined,
-            ),
-
-            _infoCard(
-              title: "Profile",
-              subtitle: "Manage your account",
-              icon: Icons.person_outline,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _infoCard({
+    required IconData icon,
     required String title,
     required String subtitle,
-    required IconData icon,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Row(
         children: [
-          Icon(icon, size: 32, color: const Color(0xFF4F46E5)),
+          Icon(icon, size: 40, color: const Color(0xFF4F46E5)),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(color: Colors.black54),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.black54),
+                ),
+              ],
+            ),
           ),
         ],
       ),
