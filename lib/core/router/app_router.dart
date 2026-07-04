@@ -1,6 +1,5 @@
 import 'package:campus_connect/features/auth/presentation/screens/login_screen.dart';
 import 'package:campus_connect/features/auth/presentation/screens/signup_screen.dart';
-import 'package:campus_connect/features/home/presentation/screens/home_screen.dart';
 import 'package:campus_connect/features/auth/presentation/screens/auth_gate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:campus_connect/features/home/presentation/screens/main_layout.dart';

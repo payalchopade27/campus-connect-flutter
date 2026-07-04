@@ -84,6 +84,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
+  Future<void> _logout() async {
+    await supabase.auth.signOut();
+    if (mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,7 +102,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(
             icon: Icon(editing ? Icons.close : Icons.edit),
             onPressed: () => setState(() => editing = !editing),
-          )
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            onPressed: _logout,
+          ),
         ],
       ),
 

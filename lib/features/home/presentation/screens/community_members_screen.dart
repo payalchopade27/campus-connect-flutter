@@ -30,8 +30,8 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
 
     final response = await supabase
         .from('members')
-        .select('role, profiles(id, name, branch, skills)')
-        .eq('community_id', widget.communityId);
+        .select('role, profiles(user_id, full_name, branch, skills)')
+        .eq('team_id', widget.communityId);
 
     return List<Map<String, dynamic>>.from(response);
   }
@@ -67,9 +67,11 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
               final role = members[index]['role'];
 
               return _memberCard(
-                name: profile['name'] ?? 'Unnamed',
+                name: profile['full_name'] ?? 'Unnamed',
                 branch: profile['branch'] ?? 'Unknown',
-                skills: profile['skills'] ?? '',
+                skills: profile['skills'] is List 
+                    ? (profile['skills'] as List).join(', ') 
+                    : (profile['skills'] ?? ''),
                 role: role,
               );
             },
@@ -93,13 +95,13 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
+       boxShadow: [
+           BoxShadow(
+             color: Colors.black.withValues(alpha: 0.04),
+             blurRadius: 14,
+             offset: const Offset(0, 6),
+           ),
+         ],
       ),
       child: Row(
         children: [

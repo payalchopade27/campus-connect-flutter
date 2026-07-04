@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -47,7 +46,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.92),
+                  color: Colors.white.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Column(
@@ -118,7 +117,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     const SizedBox(height: 12),
 
                     TextButton(
-                      onPressed: () => context.pop(),
+                      onPressed: () => Navigator.of(context).pop(),
                       child: const Text(
                         'Already have an account? Login',
                         style: TextStyle(color: Color(0xFF7C3AED)),
@@ -137,24 +136,37 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signup() async {
     final supabase = Supabase.instance.client;
 
+    final name = nameController.text.trim();
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
 
     try {
       final response = await supabase.auth.signUp(
         email: email,
         password: password,
+        data: {'full_name': name},
       );
 
       if (response.user != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Signup successful')),
+          const SnackBar(content: Text('Signup successful! Please check your email for confirmation.')),
         );
-        context.pop();
+        Navigator.of(context).pop();
       }
+    } on AuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(content: Text("An error occurred. Please try again.")),
       );
     }
   }

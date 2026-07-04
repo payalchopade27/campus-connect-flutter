@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:campus_connect/core/services/community_service.dart';
 
 class CommunityDetailScreen extends StatefulWidget {
   final String communityId;
@@ -20,6 +21,7 @@ class CommunityDetailScreen extends StatefulWidget {
 class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   bool isMember = false;
   bool isLoading = true;
+  final communityService = CommunityService();
 
   @override
   void initState() {
@@ -45,18 +47,25 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   Future<void> _joinCommunity() async {
-    final supabase = Supabase.instance.client;
-    final userId = supabase.auth.currentUser!.id;
+    final result = await communityService.joinCommunityWithCheck(widget.communityId);
 
-    await supabase.from('members').insert({
-      'team_id': widget.communityId,
-      'user_id': userId,
-      'role': 'member',
-    });
-
-    setState(() {
-      isMember = true;
-    });
+    if (mounted) {
+      if (result.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Successfully joined community!"), backgroundColor: Colors.green),
+        );
+        setState(() => isMember = true);
+      } else if (result.isAlreadyMember) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message ?? "You are already a member"), backgroundColor: Colors.orange),
+        );
+        setState(() => isMember = true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message ?? "Error joining community"), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override

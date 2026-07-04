@@ -24,25 +24,25 @@ class _CommunityPostsScreenState extends State<CommunityPostsScreen> {
     postsFuture = _loadPosts();
   }
 
-  Future<List<Map<String, dynamic>>> _loadPosts() async {
-    final data = await supabase
-        .from('posts')
-        .select('''
-          id,
-          content,
-          post_type,
-          created_at,
-          profiles (
-            full_name,
-            branch,
-            year
-          )
-        ''')
-        .eq('community_id', widget.communityId)
-        .order('created_at', ascending: false);
+   Future<List<Map<String, dynamic>>> _loadPosts() async {
+     final data = await supabase
+         .from('posts')
+         .select('''
+           id,
+           content,
+           post_type,
+           created_at,
+           profiles!posts_user_id_profiles_fkey (
+             full_name,
+             branch,
+             year
+           )
+         ''')
+         .eq('community_id', widget.communityId)
+         .order('created_at', ascending: false);
 
-    return List<Map<String, dynamic>>.from(data);
-  }
+     return List<Map<String, dynamic>>.from(data);
+   }
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +53,19 @@ class _CommunityPostsScreenState extends State<CommunityPostsScreen> {
           return const Padding(
             padding: EdgeInsets.all(24),
             child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                "Error loading posts: ${snapshot.error}",
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.redAccent),
+              ),
+            ),
           );
         }
 
@@ -95,7 +108,7 @@ class _CommunityPostsScreenState extends State<CommunityPostsScreen> {
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+         color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),

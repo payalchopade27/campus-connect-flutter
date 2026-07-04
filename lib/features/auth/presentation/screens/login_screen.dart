@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -46,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.94),
+                  color: Colors.white.withValues(alpha: 0.94),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Column(
@@ -130,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     TextButton(
                       onPressed: () {
-                        context.push('/signup');
+                        Navigator.pushNamed(context, '/signup');
                       },
                       child: const Text(
                         "Don’t have an account? Sign up",
@@ -171,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.user != null && mounted) {
-        context.go('/main');
+        Navigator.pushReplacementNamed(context, '/main');
       }
     } on AuthException catch (e) {
       // 👈 REAL Supabase error message
