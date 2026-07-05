@@ -14,7 +14,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final supabase = Supabase.instance.client;
   late Future<List<Map<String, dynamic>>> trendingFuture;
-  late Future<List<Map<String, dynamic>>> teamsFuture;
+  late Future<List<Map<String, dynamic>>> studentsFuture;
 
   @override
   void initState() {
@@ -29,26 +29,16 @@ class _HomeScreenState extends State<HomeScreen> {
         .limit(3)
         .order('created_at', ascending: false);
 
-     teamsFuture = supabase
-         .from('posts')
-         .select('''
-           id,
-           content,
-           post_type,
-           created_at,
-           profiles!posts_user_id_profiles_fkey (
-             full_name,
-             branch,
-             year
-           ),
-           communities (
-             id,
-             name
-           )
-         ''')
-         .eq('post_type', 'looking_for_team')
-         .limit(3)
-         .order('created_at', ascending: false);
+    studentsFuture = supabase
+        .from('profiles')
+        .select('''
+        full_name,
+        branch,
+        year,
+        skills,
+        tech_stack
+      ''')
+        .order('full_name');
   }
 
   @override
@@ -77,8 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _sectionTitle("Trending Communities"),
             _trendingCommunities(),
             const SizedBox(height: 28),
-            _sectionTitle("Looking for Team"),
-            _teamPreview(),
+            _sectionTitle("Student Directory"),
+            _studentDirectory(),
           ],
         ),
       ),
@@ -197,38 +187,112 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _teamPreview() {
+  Widget _studentDirectory() {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: teamsFuture,
+      future: studentsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
         }
+
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return _emptyCard("No requests found");
+          return _emptyCard("No students registered");
         }
 
         return Column(
-          children: snapshot.data!.map((post) {
-            final profile = post['profiles'];
-            final community = post['communities'];
+          children: snapshot.data!.map((student) {
+            final skills = List<String>.from(student['skills'] ?? []);
+            final techStack = List<String>.from(student['tech_stack'] ?? []);
+
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _dataCard(
-                icon: Icons.groups_rounded,
-                title: profile?['full_name'] ?? "Anonymous",
-                subtitle: "Looking for team in ${community?['name'] ?? 'General'}",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                       builder: (_) => CommunityScreen(
-                         communityId: post['community_id'],
-                         communityName: community?['name'] ?? 'Community',
-                       ),
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(
+                  minHeight: 190,
+                ),
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
-                  );
-                },
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// Name
+                    Text(
+                      student['full_name'] ?? '',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    /// Branch & Year
+                    Text(
+                      "${student['branch']} • ${student['year']}",
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 14,
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    /// Skills
+                    if (skills.isNotEmpty)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: skills.map((skill) {
+                          return Chip(
+                            label: Text(
+                              skill,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                            backgroundColor: Colors.blue.shade50,
+                            side: BorderSide(
+                              color: Colors.blue.shade100,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          );
+                        }).toList(),
+                      ),
+
+                    const SizedBox(height: 14),
+
+                    /// Tech Stack
+                    if (techStack.isNotEmpty)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: techStack.map((tech) {
+                          return Chip(
+                            label: Text(
+                              tech,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                            backgroundColor: Colors.deepPurple.shade50,
+                            side: BorderSide(
+                              color: Colors.deepPurple.shade100,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          );
+                        }).toList(),
+                      ),
+                  ],
+                ),
               ),
             );
           }).toList(),
@@ -313,6 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: [
             Container(
+
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFFEDEBFF),
