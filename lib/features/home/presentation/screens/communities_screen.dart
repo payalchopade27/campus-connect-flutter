@@ -56,28 +56,28 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(data);
   }
-
   Future<List<Map<String, dynamic>>> _getJoined() async {
     final uid = supabase.auth.currentUser!.id;
 
-    print("Current User: $uid");
+    debugPrint("=========== GET JOINED ===========");
+    debugPrint("Current User: $uid");
 
     final memberRows = await supabase
         .from('members')
         .select('team_id')
         .eq('user_id', uid);
 
-    print("Member Rows:");
-    print(memberRows);
+    debugPrint("Member Rows: $memberRows");
 
     if (memberRows.isEmpty) {
+      debugPrint("No joined communities");
       return [];
     }
 
     List<Map<String, dynamic>> communities = [];
 
     for (final row in memberRows) {
-      print("Loading community: ${row['team_id']}");
+      debugPrint("Loading ${row['team_id']}");
 
       final community = await supabase
           .from('communities')
@@ -85,13 +85,12 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
           .eq('id', row['team_id'])
           .single();
 
-      print("Found: ${community['name']}");
+      debugPrint("Found ${community['name']}");
 
       communities.add(community);
     }
 
-    print("Final Communities:");
-    print(communities);
+    debugPrint("Final: $communities");
 
     return communities;
   }
