@@ -17,9 +17,9 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
   final supabase = Supabase.instance.client;
   final communityService = CommunityService();
 
-  late Future<List<Map<String, dynamic>>> createdFuture;
+  late Future<List<Map<String, dynamic>>> communitiesFuture;
   late Future<List<Map<String, dynamic>>> joinedFuture;
-  late Future<List<Map<String, dynamic>>> discoverFuture;
+
 
   final searchController = TextEditingController();
   String searchQuery = '';
@@ -27,7 +27,7 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _loadAll();
   }
 
@@ -40,9 +40,8 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
 
   void _loadAll() {
     setState(() {
-      createdFuture = _getCreated();
+      communitiesFuture = _getCreated();
       joinedFuture = _getJoined();
-      discoverFuture = _getDiscover();
     });
   }
 
@@ -60,103 +59,41 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
 
   Future<List<Map<String, dynamic>>> _getJoined() async {
     final uid = supabase.auth.currentUser!.id;
-    try {
-      // First get joined community ids from the members table. Doing this in
-      // two steps avoids relying on the client-side "inner" join syntax and
-      // guarantees we only fetch communities that actually match the user's
-      // membership rows.
-      final memberRows = await supabase
-          .from('members')
-          .select('team_id')
-          .eq('user_id', uid);
 
-      final joinedIds = memberRows.map((e) => e['team_id'] as String).toList();
+    print("Current User: $uid");
 
-      debugPrint('[_getJoined] joinedIds: $joinedIds');
+    final memberRows = await supabase
+        .from('members')
+        .select('team_id')
+        .eq('user_id', uid);
 
-      // If the user hasn't joined any communities, return an empty list.
-      if (joinedIds.isEmpty) return [];
+    print("Member Rows:");
+    print(memberRows);
 
-      // Fetch communities with ids in the joined list. Build a quoted id
-      // list because the PostgREST 'in' operator expects an SQL-style list
-      // like ('id1','id2'). Use the filter() API to pass the operator.
-      final quoted = joinedIds.map((e) => "'$e'").join(',');
-      final data = await supabase
+    if (memberRows.isEmpty) {
+      return [];
+    }
+
+    List<Map<String, dynamic>> communities = [];
+
+    for (final row in memberRows) {
+      print("Loading community: ${row['team_id']}");
+
+      final community = await supabase
           .from('communities')
           .select()
-          .filter('id', 'in', '($quoted)')
-          .order('created_at', ascending: false);
+          .eq('id', row['team_id'])
+          .single();
 
-      return List<Map<String, dynamic>>.from(data);
-    } catch (e) {
-      debugPrint("Error in _getJoined: $e");
-      return [];
+      print("Found: ${community['name']}");
+
+      communities.add(community);
     }
-  }
 
-  Future<List<Map<String, dynamic>>> _getDiscover() async {
-    final uid = supabase.auth.currentUser!.id;
+    print("Final Communities:");
+    print(communities);
 
-    try {
-      final joined = await supabase
-          .from('members')
-          .select('team_id')
-          .eq('user_id', uid);
-
-      final joinedIds = joined.map((e) => e['team_id'] as String).toList();
-
-      debugPrint('[_getDiscover] joinedIds: $joinedIds');
-
-      var query = supabase.from('communities').select();
-      
-      if (joinedIds.isNotEmpty) {
-        // Supabase expects an SQL-style list for the `in`/`not .. in` operator,
-        // e.g.: ( 'id1','id2' ). When passing a Dart List directly the client
-        // may not build the right query, which can cause the filter to be
-        // ignored and return all rows. Build the string explicitly and quote
-        // each id to make the `not in` filter work correctly.
-        final quoted = joinedIds.map((e) => "'$e'").join(',');
-        query = query.not('id', 'in', '($quoted)');
-      }
-
-      final data = await query.order('created_at', ascending: false);
-      debugPrint('[_getDiscover] found ${data.length} communities to discover');
-
-      return List<Map<String, dynamic>>.from(data);
-    } catch (e) {
-      debugPrint("Error in _getDiscover: $e");
-      return [];
-    }
-  }
-
-  Future<void> _joinCommunity(String communityId) async {
-    final result = await communityService.joinCommunityWithCheck(communityId);
-
-    if (mounted) {
-      if (result.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.message ?? 'Successfully joined community!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        setState(_loadAll);
-      } else if (result.isAlreadyMember) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.message ?? 'You are already a member'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.message ?? 'Error joining community'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    return communities;
   }
 
   /// Filter communities by search query
@@ -207,15 +144,14 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
               ],
             ),
           ),
-          bottom: TabBar(
+           bottom: TabBar(
             controller: _tabController,
             indicatorColor: Colors.white,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             tabs: const [
-              Tab(text: "Created"),
-              Tab(text: "Joined"),
-              Tab(text: "Discover"),
+              Tab(text: "Communities"),
+              Tab(text: "Joined Communities"),
             ],
           ),
         ),
@@ -234,21 +170,22 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
           }
         },
       ),
-      body: TabBarView(
+       body: TabBarView(
         controller: _tabController,
         children: [
-          _communityList(createdFuture, showJoin: false),
-          _communityList(joinedFuture, showJoin: false),
-          _communityList(discoverFuture, showJoin: true),
+          _communityList(communitiesFuture),
+          _communityList(joinedFuture),
         ],
       ),
     );
   }
 
-   Widget _communityList(
-       Future<List<Map<String, dynamic>>> future, {
-         required bool showJoin,
-       }) {
+
+
+  Widget _communityList(
+      Future<List<Map<String, dynamic>>> future, {
+        bool showJoin = false,
+      }) {
      return FutureBuilder<List<Map<String, dynamic>>>(
        future: future,
        builder: (context, snapshot) {
@@ -256,7 +193,7 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
            return const Center(child: CircularProgressIndicator());
          }
          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-           return _emptyState(showJoin);
+           return _emptyState();
          }
 
          // Apply search filter
@@ -296,7 +233,7 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
            padding: const EdgeInsets.all(20),
            itemCount: filtered.length,
            itemBuilder: (context, index) {
-             return _communityCard(filtered[index], showJoin);
+             return _communityCard(filtered[index], showJoin: showJoin);
            },
          );
        },
@@ -304,14 +241,14 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
    }
 
   /* 🔥 ENHANCED CARD */
-  Widget _communityCard(Map<String, dynamic> c, bool showJoin) {
+  Widget _communityCard(Map<String, dynamic> c, {bool showJoin = false}) {
     final name = c['name'] ?? '';
     final desc = c['description'] ?? 'No description provided';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 22),
       child: GestureDetector(
-        onTap: !showJoin ? () {
+        onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -322,7 +259,7 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
               ),
             ),
           );
-        } : null,
+        },
         child: Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
@@ -363,26 +300,16 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
                 ),
               ),
               const SizedBox(height: 18),
-               Row(
-                 mainAxisAlignment: MainAxisAlignment.end,
-                 children: [
-                   if (showJoin)
-                     GestureDetector(
-                       onTap: () => _joinCommunity(c['id']),
-                       child: Container(
-                         padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
-                         decoration: BoxDecoration(
-                           color: Colors.white,
-                           borderRadius: BorderRadius.circular(14),
-                         ),
-                         child: const Text("Join", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
-                       ),
-                     )
-                   else
-                     const Icon(Icons.arrow_forward_ios,
-                         size: 16, color: Colors.white70),
-                 ],
-               )
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.white70,
+                  ),
+                ],
+              )
             ],
           ),
         ),
@@ -390,7 +317,7 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
     );
   }
 
-  Widget _emptyState(bool discover) {
+  Widget _emptyState() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -398,39 +325,23 @@ class _CommunitiesScreenState extends State<CommunitiesScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              discover ? Icons.explore_rounded : Icons.groups_rounded,
+              Icons.groups,
               size: 72,
               color: Colors.grey.shade400,
             ),
-            const SizedBox(height: 16),
-            Text(
-              discover
-                  ? "No communities to discover yet"
-                  : "You don’t have any communities here",
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            const SizedBox(height: 20),
+            const Text(
+              "No Communities Yet",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              discover
-                  ? "Check back later for new communities to join!"
-                  : "Visit the Discover tab to find and join communities 👉",
+            const SizedBox(height: 10),
+            const Text(
+              "Create your first community and invite your teammates.",
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: Colors.black54),
             ),
-            if (!discover)
-              ...[
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () => _tabController.animateTo(2),
-                  icon: const Icon(Icons.explore),
-                  label: const Text("Go to Discover"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
           ],
         ),
       ),

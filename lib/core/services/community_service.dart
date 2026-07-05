@@ -46,50 +46,58 @@ class CommunityService {
   /// Robust join method with pre-check for existing membership.
   /// Returns JoinResult with status: success, alreadyMember, or error.
   Future<JoinResult> joinCommunityWithCheck(String communityId) async {
-    final userId = _supabase.auth.currentUser!.id;
+    final user = _supabase.auth.currentUser;
+    final session = _supabase.auth.currentSession;
+
+    print("========== JOIN DEBUG ==========");
+    print("Current User : $user");
+    print("Session      : $session");
+    print("User ID      : ${user?.id}");
+    print("Community ID : $communityId");
+    print("================================");
+
+    if (user == null) {
+      return JoinResult(
+        status: JoinStatus.error,
+        message: "User not logged in",
+      );
+    }
 
     try {
-      // 1️⃣ Check if user is already a member
       final existing = await _supabase
           .from('members')
           .select()
           .eq('team_id', communityId)
-          .eq('user_id', userId)
+          .eq('user_id', user.id)
           .maybeSingle();
 
       if (existing != null) {
         return JoinResult(
           status: JoinStatus.alreadyMember,
-          message: 'You are already a member of this community',
+          message: "Already joined",
         );
       }
 
-      // 2️⃣ User is not a member, so insert into members table
       await _supabase.from('members').insert({
         'team_id': communityId,
-        'user_id': userId,
+        'user_id': user.id,
         'role': 'member',
       });
 
       return JoinResult(
         status: JoinStatus.success,
-        message: 'Successfully joined community!',
+        message: "Joined successfully",
       );
     } catch (e) {
-      // Handle database errors (e.g., FK constraint, unique constraint)
-      final err = e.toString().toLowerCase();
-      if (err.contains('duplicate') || err.contains('already') || err.contains('23505')) {
-        return JoinResult(
-          status: JoinStatus.alreadyMember,
-          message: 'You are already a member of this community',
-        );
-      }
+      print(e);
+
       return JoinResult(
         status: JoinStatus.error,
-        message: 'Error joining community: $e',
+        message: e.toString(),
       );
     }
   }
+
   Future<List<Community>> getDiscoverCommunities() async {
     final client = Supabase.instance.client;
     final userId = client.auth.currentUser!.id;

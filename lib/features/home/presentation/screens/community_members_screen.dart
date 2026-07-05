@@ -16,181 +16,98 @@ class CommunityMembersScreen extends StatefulWidget {
       _CommunityMembersScreenState();
 }
 
-class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
-  late Future<List<Map<String, dynamic>>> membersFuture;
+class _CommunityMembersScreenState
+    extends State<CommunityMembersScreen> {
+  final supabase = Supabase.instance.client;
+
+  List<Map<String, dynamic>> members = [];
+  bool loading = true;
 
   @override
   void initState() {
     super.initState();
-    membersFuture = _fetchMembers();
+    loadMembers();
   }
 
-  Future<List<Map<String, dynamic>>> _fetchMembers() async {
-    final supabase = Supabase.instance.client;
+  Future<void> loadMembers() async {
+    loading = true;
+    setState(() {});
 
-    final response = await supabase
+    final memberRows = await supabase
         .from('members')
-        .select('role, profiles(user_id, full_name, branch, skills)')
+        .select()
         .eq('team_id', widget.communityId);
 
-    return List<Map<String, dynamic>>.from(response);
+    List<Map<String, dynamic>> temp = [];
+
+    for (final member in memberRows) {
+      final profile = await supabase
+          .from('profiles')
+          .select()
+          .eq('user_id', member['user_id'])
+          .maybeSingle();
+
+      if (profile != null) {
+        temp.add({
+          ...profile,
+          'role': member['role'],
+        });
+      }
+    }
+
+    members = temp;
+    loading = false;
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F3F7),
       appBar: AppBar(
-        title: Text(
-          widget.communityName,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
+        title: Text(widget.communityName),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: membersFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : members.isEmpty
+          ? const Center(
+        child: Text("No Members"),
+      )
+          : ListView.builder(
+        padding: const EdgeInsets.all(15),
+        itemCount: members.length,
+        itemBuilder: (context, index) {
+          final member = members[index];
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return _emptyState();
-          }
-
-          final members = snapshot.data!;
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: members.length,
-            itemBuilder: (context, index) {
-              final profile = members[index]['profiles'];
-              final role = members[index]['role'];
-
-              return _memberCard(
-                name: profile['full_name'] ?? 'Unnamed',
-                branch: profile['branch'] ?? 'Unknown',
-                skills: profile['skills'] is List 
-                    ? (profile['skills'] as List).join(', ') 
-                    : (profile['skills'] ?? ''),
-                role: role,
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  // ================= UI =================
-
-  Widget _memberCard({
-    required String name,
-    required String branch,
-    required String skills,
-    required String role,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-       boxShadow: [
-           BoxShadow(
-             color: Colors.black.withValues(alpha: 0.04),
-             blurRadius: 14,
-             offset: const Offset(0, 6),
-           ),
-         ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: const Color(0xFF4F46E5),
-            child: Text(
-              name[0].toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Text(
+                  member['full_name'][0],
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  branch,
-                  style: const TextStyle(color: Colors.black54),
-                ),
-                if (skills.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+              title: Text(member['full_name']),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(member['branch'] ?? ""),
+                  Text(member['year'] ?? ""),
                   Text(
-                    skills,
-                    style: const TextStyle(
-                      color: Color(0xFF4F46E5),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    member['skills'] == null
+                        ? ""
+                        : (member['skills'] as List).join(", "),
                   ),
                 ],
-              ],
+              ),
+              trailing: Chip(
+                label: Text(member['role']),
+              ),
             ),
-          ),
-          _roleChip(role),
-        ],
-      ),
-    );
-  }
-
-  Widget _roleChip(String role) {
-    final isAdmin = role == 'admin';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isAdmin ? const Color(0xFFEDEBFF) : Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        isAdmin ? 'Admin' : 'Member',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: isAdmin ? const Color(0xFF4F46E5) : Colors.black54,
-        ),
-      ),
-    );
-  }
-
-  Widget _emptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.people_outline, size: 64, color: Colors.grey),
-          SizedBox(height: 12),
-          Text(
-            "No members yet",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-          ),
-          SizedBox(height: 6),
-          Text(
-            "Members will appear when users join",
-            style: TextStyle(color: Colors.black54),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

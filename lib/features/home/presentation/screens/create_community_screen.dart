@@ -20,7 +20,7 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a community name")),
+        const SnackBar(content: Text("Enter community name")),
       );
       return;
     }
@@ -28,37 +28,73 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
     setState(() => isLoading = true);
 
     try {
-      final userId = supabase.auth.currentUser!.id;
-      
-      final data = await supabase.from('communities').insert({
+      final user = supabase.auth.currentUser;
+
+      if (user == null) {
+        throw Exception("User not logged in");
+      }
+
+      //----------------------------------------
+      // Create Community
+      //----------------------------------------
+
+      final community = await supabase
+          .from('communities')
+          .insert({
         'name': name,
         'description': desc,
-        'created_by': userId,
-      }).select().single();
+        'created_by': user.id,
+      })
+          .select()
+          .single();
 
-      final communityId = data['id'];
+      final communityId = community['id'];
 
-      // Add creator as an admin member
+      //----------------------------------------
+      // Add creator as ADMIN
+      //----------------------------------------
+
       await supabase.from('members').insert({
         'team_id': communityId,
-        'user_id': userId,
+        'user_id': user.id,
         'role': 'admin',
       });
 
+      //----------------------------------------
+      // Verify insert
+      //----------------------------------------
+
+      final check = await supabase
+          .from('members')
+          .select()
+          .eq('team_id', communityId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      debugPrint("Creator inserted = $check");
+
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Community Created Successfully"),
+            backgroundColor: Colors.green,
+          ),
+        );
+
         Navigator.pop(context, true);
       }
     } catch (e) {
+      debugPrint(e.toString());
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
+          SnackBar(content: Text(e.toString())),
         );
       }
-    } finally {
-      if (mounted) setState(() => isLoading = false);
     }
-  }
 
+    setState(() => isLoading = false);
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
